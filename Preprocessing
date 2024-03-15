@@ -1,5 +1,5 @@
 import numpy as np
-
+from scipy.sparse import coo_matrix
 
 
 def create_adjacency_matrix(file_path):
