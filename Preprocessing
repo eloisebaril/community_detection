@@ -1,10 +1,34 @@
+import numpy as np
 
-import scipy.sparse as sp
-#s_pre_adj_mat a l'air normée ?
-#s_adj_mat 1 ou 0
 
-#creates the adjacency matrix in array format
-def adj_mat()
-    adj_mat = sp.load_npz(r'C:\Users\elois\OneDrive\Documents\CS2A\ST7-Smart cities\projet\community_detection\s_adj_mat.npz')
-    adj_mat = adj_mat.toarray()
-    return adj_mat
+
+def create_adjacency_matrix(file_path):
+    # Read connections from the text file
+    connections = []
+    with open(file_path, 'r') as file:
+        for line in file:
+            node1, node2 = map(int, line.strip().split())
+            connections.append((node1, node2))
+
+    # Get the number of nodes
+    num_nodes = 196591
+
+    # Create sparse COO matrix
+    row = []
+    col = []
+    for node1, node2 in connections:
+        row.append(node1)  # Subtract 1 because indices start from 0
+        col.append(node2)
+
+    data = np.ones(len(row), dtype=int)  # Assuming all connections have a weight of 1
+
+    adjacency_matrix = coo_matrix((data, (row, col)), shape=(num_nodes, num_nodes))
+
+    return adjacency_matrix
+
+# Example usage:
+file_path = r'C:\Users\elois\OneDrive\Documents\CS2A\ST7-Smart cities\projet\community_detection\Gowalla_edges.txt'  # Change this to the path of your text file
+adj_matrix = create_adjacency_matrix(file_path)
+
+
+

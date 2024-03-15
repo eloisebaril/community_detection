@@ -1,6 +1,6 @@
-import community_modularity
+
 from community_modularity import louvain_method
-from Preprocessing import adj_mat
+from ..Preprocessing import adj_mat
 
 
 

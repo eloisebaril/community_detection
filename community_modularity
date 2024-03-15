@@ -11,9 +11,11 @@ from collections import defaultdict
 
 # Third Party
 import numpy as np
-
+from scipy.sparse import coo_matrix
 # Local
-from ..utilities import modularity_matrix, modularity
+
+
+from utils.utilities import modularity_matrix, modularity
 
 #########
 # HELPERS
