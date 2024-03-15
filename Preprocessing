@@ -1,0 +1,10 @@
+
+import scipy.sparse as sp
+#s_pre_adj_mat a l'air normée ?
+#s_adj_mat 1 ou 0
+
+#creates the adjacency matrix in array format
+def adj_mat()
+    adj_mat = sp.load_npz(r'C:\Users\elois\OneDrive\Documents\CS2A\ST7-Smart cities\projet\community_detection\s_adj_mat.npz')
+    adj_mat = adj_mat.toarray()
+    return adj_mat
