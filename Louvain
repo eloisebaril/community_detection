@@ -1,0 +1,50 @@
+import pandas as pd
+import numpy as np
+import networkx as nx
+from sklearn.metrics.pairwise import cosine_similarity
+from scipy.sparse import csr_matrix
+# Load datasets
+anime_data = pd.read_csv('Anime.csv')
+rating_data = pd.read_csv('Rating.csv')
+
+# Merge datasets on 'anime_id'
+merged_data = pd.merge(rating_data, anime_data, on='anime_id')
+
+# Filter data for the first 100 users
+first_100_users_data = merged_data[merged_data['user_id'] <= 100]
+# Create user-item matrix
+user_item_matrix = first_100_users_data.pivot(index='user_id', columns='name', values='rating_x').fillna(-1)
+# Convert user-item matrix to sparse matrix
+user_item_sparse = csr_matrix(user_item_matrix.values)
+# Calculate user similarity (using cosine similarity = cos(theta) = A.B/||A||*||B|| for two vectors
+
+user_similarity = cosine_similarity(user_item_sparse, dense_output=False)
+
+# Build user graph
+G = nx.Graph()
+num_users = user_item_matrix.shape[0]
+for i in range(num_users):
+    for j in range(i + 1, num_users):
+        similarity = user_similarity[i, j]
+        if similarity > 0:  # Only add edges for users with positive similarity
+            G.add_edge(i, j, weight=similarity)
+
+# Perform community detection
+#communities = nx.algorithms.community.greedy_modularity_communities(G) #greedy way
+communities = nx.community.louvain_communities(G, resolution=1.05)#louvain
+
+# Print number of communities and their sizes
+print("Number of communities:", len(communities))
+for i, community in enumerate(communities):
+    print("Community", i+1, "size:", len(community))
+
+# Optional: Visualization of the graph and communities
+import matplotlib.pyplot as plt
+
+pos = nx.spring_layout(G)
+plt.figure(figsize=(10, 8))
+nx.draw_networkx_nodes(G, pos, node_size=20)
+nx.draw_networkx_edges(G, pos, alpha=0.4)
+plt.title("User Graph with Detected Communities")
+plt.show()
+
