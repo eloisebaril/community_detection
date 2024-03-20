@@ -20,7 +20,7 @@ from scipy.sparse import coo_matrix
 # Standard Library
 from itertools import product, combinations
 from typing import Callable
-import numpy as np
+
 
 
 
@@ -102,7 +102,7 @@ file_path = r'C:\Users\elois\OneDrive\Documents\CS2A\ST7-Smart cities\projet\com
 adj_matrix = create_adjacency_matrix(file_path)
 
 def initialize_node_to_comm(adj_matrix):
-    return list(range(len(adj_matrix)))
+    return list(range(adj_matrix.shape[0]))
 
 
 def invert_node_to_comm(node_to_comm):
@@ -223,7 +223,7 @@ def run_second_phase(node_to_comm, adj_matrix, true_partition, true_comms):
 def louvain_method(adj_matrix : np.ndarray, n : int = None) -> list:
     optimal_adj_matrix = adj_matrix
     node_to_comm = initialize_node_to_comm(adj_matrix)
-    true_partition = [{i} for i in range(len(adj_matrix))]
+    true_partition = [{i} for i in range(adj_matrix.shape[0])]
     true_comms = {c: c for c in node_to_comm}
 
     M = modularity_matrix(adj_matrix)
