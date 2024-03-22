@@ -16,8 +16,8 @@ first_100_users_data = merged_data[merged_data['user_id'] <= 100]
 user_item_matrix = first_100_users_data.pivot(index='user_id', columns='name', values='rating_x').fillna(-1)
 # Convert user-item matrix to sparse matrix
 user_item_sparse = csr_matrix(user_item_matrix.values)
-# Calculate user similarity (using cosine similarity = cos(theta) = A.B/||A||*||B|| for two vectors
 
+# Calculate user similarity (using cosine similarity = cos(theta) = A.B/||A||*||B|| for two vectors
 user_similarity = cosine_similarity(user_item_sparse, dense_output=False)
 
 # Build user graph
@@ -31,7 +31,7 @@ for i in range(num_users):
 
 # Perform community detection
 #communities = nx.algorithms.community.greedy_modularity_communities(G) #greedy way
-communities = nx.community.louvain_communities(G, resolution=1.05)#louvain
+communities = nx.community.louvain_communities(G, resolution=1.2)#louvain
 
 # Print number of communities and their sizes
 print("Number of communities:", len(communities))
@@ -48,3 +48,30 @@ nx.draw_networkx_edges(G, pos, alpha=0.4)
 plt.title("User Graph with Detected Communities")
 plt.show()
 
+def recommandation(user):
+    """returns a recommended anime for a given user"""
+    # Find the community to which the user belongs
+    for community in communities:
+        if user in community:
+            user_community = community
+            break
+
+    # Calculate average ratings for each anime in the user's community
+    community_ratings = user_item_matrix.loc[user_community].mean()
+
+    # Sort the anime by average ratings
+    sorted_anime = community_ratings.sort_values(ascending=False)
+
+    # Get the top-rated anime that the user hasn't watched yet
+    watched_anime = user_item_matrix.loc[user]
+    recommended_anime = sorted_anime.index[watched_anime == -1]
+
+    if len(recommended_anime) == 0:
+        return "User watched everything"
+
+    # Return the top recommended anime
+    return recommended_anime[0]
+
+user_id = 10
+recommended_anime=recommandation(user_id)
+print("Recommended anime for user", user_id, ":", recommended_anime)
