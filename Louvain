@@ -3,9 +3,33 @@ import numpy as np
 import networkx as nx
 from sklearn.metrics.pairwise import cosine_similarity
 from scipy.sparse import csr_matrix
+import matplotlib.pyplot as plt
 # Load datasets
 anime_data = pd.read_csv('Anime.csv')
 rating_data = pd.read_csv('Rating.csv')
+colors_hex_list = [
+    "#FF0000",  # Red
+    "#00FF00",  # Green
+    "#0000FF",  # Blue
+    "#FFFF00",  # Yellow
+    "#00FFFF",  # Cyan
+    "#FF00FF",  # Magenta
+    "#FFA500",  # Orange
+    "#800080",  # Purple
+    "#00FF00",  # Lime
+    "#008080",  # Teal
+    "#FFC0CB",  # Pink
+    "#C0C0C0",  # Silver
+    "#A52A2A",  # Brown
+    "#800000",  # Maroon
+    "#808000",  # Olive
+    "#000080",  # Navy
+    "#4B0082",  # Indigo
+    "#7FFFD4",  # Aquamarine
+    "#40E0D0",  # Turquoise
+    "#FFD700"   # Gold
+]
+
 
 # Merge datasets on 'anime_id'
 merged_data = pd.merge(rating_data, anime_data, on='anime_id')
@@ -17,7 +41,7 @@ user_item_matrix = first_100_users_data.pivot(index='user_id', columns='name', v
 # Convert user-item matrix to sparse matrix
 user_item_sparse = csr_matrix(user_item_matrix.values)
 
-# Calculate user similarity (using cosine similarity = cos(theta) = A.B/||A||*||B|| for two vectors
+# Calculate user similarity (using cosine similarity = A.B/||A||*||B|| for two vectors
 user_similarity = cosine_similarity(user_item_sparse, dense_output=False)
 
 # Build user graph
@@ -31,7 +55,7 @@ for i in range(num_users):
 
 # Perform community detection
 #communities = nx.algorithms.community.greedy_modularity_communities(G) #greedy way
-communities = nx.community.louvain_communities(G, resolution=1.2)#louvain
+communities = nx.community.louvain_communities(G, resolution=1.05)#louvain algorithm 
 
 # Print number of communities and their sizes
 print("Number of communities:", len(communities))
@@ -39,16 +63,18 @@ for i, community in enumerate(communities):
     print("Community", i+1, "size:", len(community))
 
 # Optional: Visualization of the graph and communities
-import matplotlib.pyplot as plt
 
 pos = nx.spring_layout(G)
 plt.figure(figsize=(10, 8))
-nx.draw_networkx_nodes(G, pos, node_size=20)
+for i in range(len(communities)):
+    commu_list = list(communities[i])
+    nx.draw_networkx_nodes(G, pos, nodelist=commu_list,
+                           node_color=colors_hex_list[i], node_size=20)
 nx.draw_networkx_edges(G, pos, alpha=0.4)
-plt.title("User Graph with Detected Communities")
+plt.title("User Graph with Nodes Colored by Community")
 plt.show()
 
-def recommandation(user):
+def recommendation(user, communities=communities, user_item_matrix=user_item_matrix):
     """returns a recommended anime for a given user"""
     # Find the community to which the user belongs
     for community in communities:
@@ -72,6 +98,23 @@ def recommandation(user):
     # Return the top recommended anime
     return recommended_anime[0]
 
-user_id = 10
-recommended_anime=recommandation(user_id)
-print("Recommended anime for user", user_id, ":", recommended_anime)
+def test(user_id):  
+    
+    threshold = 8  # Example threshold for liked anime
+    # Retrieve liked animes
+    watched_anime = user_item_matrix.loc[user_id]
+    liked_anime = watched_anime[watched_anime >= threshold].index.tolist()
+
+    # Step 3: Remove the selected animes from the watched animes
+    user_item_matrix.loc[user_id, liked_anime] = -1
+
+    # Step 4: Generate recommendations for the user
+    recommended_anime = recommendation(user_id, user_item_matrix=user_item_matrix)
+
+    # Step 5: Evaluate the recommendations against the anime the user has watched and liked
+    if recommended_anime in liked_anime:
+        return True
+
+    else:
+        return False, recommended_anime
+
