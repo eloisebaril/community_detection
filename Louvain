@@ -4,10 +4,11 @@ import networkx as nx
 from sklearn.metrics.pairwise import cosine_similarity
 from scipy.sparse import csr_matrix
 import matplotlib.pyplot as plt
+from netgraph import Graph
 # Load datasets
 anime_data = pd.read_csv('Anime.csv')
 rating_data = pd.read_csv('Rating.csv')
-colors_hex_list = [
+community_to_color= [
     "#FF0000",  # Red
     "#00FF00",  # Green
     "#0000FF",  # Blue
@@ -35,7 +36,7 @@ colors_hex_list = [
 merged_data = pd.merge(rating_data, anime_data, on='anime_id')
 
 # Filter data for the first 100 users
-first_100_users_data = merged_data[merged_data['user_id'] <= 100]
+first_100_users_data = merged_data[merged_data['user_id'] <= 300]
 # Create user-item matrix
 user_item_matrix = first_100_users_data.pivot(index='user_id', columns='name', values='rating_x').fillna(-1)
 # Convert user-item matrix to sparse matrix
@@ -55,36 +56,55 @@ for i in range(num_users):
 
 # Perform community detection
 #communities = nx.algorithms.community.greedy_modularity_communities(G) #greedy way
-communities = nx.community.louvain_communities(G, resolution=1.05)#louvain algorithm 
+communities = nx.community.louvain_communities(G, resolution=1.009)#louvain algorithm 
 
 # Print number of communities and their sizes
 print("Number of communities:", len(communities))
 for i, community in enumerate(communities):
     print("Community", i+1, "size:", len(community))
 
-# Optional: Visualization of the graph and communities
+# Optional: Visualization of the graph and communities doesn't work yet)
+visu=False
+if visu:
+    node_to_community = []
+    for i in G.nodes():
+        for idx, s in enumerate(communities):
+            if i in s:
+                node_to_community.append((i, idx))
 
-pos = nx.spring_layout(G)
-plt.figure(figsize=(10, 8))
-for i in range(len(communities)):
-    commu_list = list(communities[i])
-    nx.draw_networkx_nodes(G, pos, nodelist=commu_list,
-                           node_color=colors_hex_list[i], node_size=20)
-nx.draw_networkx_edges(G, pos, alpha=0.4)
-plt.title("User Graph with Nodes Colored by Community")
-plt.show()
+
+
+    node_color = {node: community_to_color[community_id] for node, community_id in node_to_community}
+
+    Graph(G,
+      node_color=node_color, node_edge_width=0, edge_alpha=0.1,
+      node_layout='communities', node_layout_kwargs=dict(node_to_community=node_to_community),
+      edge_layout='bundled', edge_layout_kwargs=dict(k=2000),
+    )
+
+    plt.show()
+
 
 def recommendation(user, communities=communities, user_item_matrix=user_item_matrix):
     """returns a recommended anime for a given user"""
     # Find the community to which the user belongs
     for community in communities:
         if user in community:
-            user_community = community
+            user_community = list(community)
             break
-
+    community_user_item_matrix = []
     # Calculate average ratings for each anime in the user's community
-    community_ratings = user_item_matrix.loc[user_community].mean()
-
+    for i in np.array(user_community):
+        community_user_item_matrix.append(user_item_matrix.loc[i+1])
+    
+    # Create a mask to identify non-negative ratings for users in the community
+    mask = (community_user_item_matrix != -1)
+    
+    # Apply the mask to the user-item matrix to consider only non-negative ratings
+    masked_user_item_matrix = user_item_matrix[mask]
+    
+    # Calculate mean rating for each anime within the community
+    community_ratings = masked_user_item_matrix.mean(axis=0)
     # Sort the anime by average ratings
     sorted_anime = community_ratings.sort_values(ascending=False)
 
@@ -100,7 +120,7 @@ def recommendation(user, communities=communities, user_item_matrix=user_item_mat
 
 def test(user_id):  
     
-    threshold = 8  # Example threshold for liked anime
+    threshold = 10  # Example rating threshold for liked anime 
     # Retrieve liked animes
     watched_anime = user_item_matrix.loc[user_id]
     liked_anime = watched_anime[watched_anime >= threshold].index.tolist()
@@ -110,11 +130,12 @@ def test(user_id):
 
     # Step 4: Generate recommendations for the user
     recommended_anime = recommendation(user_id, user_item_matrix=user_item_matrix)
-
+    
     # Step 5: Evaluate the recommendations against the anime the user has watched and liked
     if recommended_anime in liked_anime:
-        return True
+        return True, recommended_anime
 
     else:
         return False, recommended_anime
 
+print(test(18))
