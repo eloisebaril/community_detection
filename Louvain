@@ -85,42 +85,36 @@ if visu:
     plt.show()
 
 
-def recommendation(user, communities=communities, user_item_matrix=user_item_matrix):
-    """returns a recommended anime for a given user"""
+def recommendation(user,  user_item_matrix, communities=communities):
+    """Returns a recommended anime for a given user"""
     # Find the community to which the user belongs
     for community in communities:
         if user in community:
             user_community = list(community)
             break
-    community_user_item_matrix = []
-    # Calculate average ratings for each anime in the user's community
-    for i in np.array(user_community):
-        community_user_item_matrix.append(user_item_matrix.loc[i+1])
-    
-    # Create a mask to identify non-negative ratings for users in the community
-    mask = (community_user_item_matrix != -1)
-    
-    # Apply the mask to the user-item matrix to consider only non-negative ratings
-    masked_user_item_matrix = user_item_matrix[mask]
+
+    # Filter user-item matrix for users in the given community
+    community_user_item_matrix = user_item_matrix[user_item_matrix.index.isin(user_community)]
+
     
     # Calculate mean rating for each anime within the community
-    community_ratings = masked_user_item_matrix.mean(axis=0)
+    #community_ratings = community_user_item_matrix.mean(axis=0)
+    community_ratings = community_user_item_matrix.replace(-1, np.nan).mean(axis=0)
     # Sort the anime by average ratings
     sorted_anime = community_ratings.sort_values(ascending=False)
 
-    # Get the top-rated anime that the user hasn't watched yet
-    watched_anime = user_item_matrix.loc[user]
-    recommended_anime = sorted_anime.index[watched_anime == -1]
-
-    if len(recommended_anime) == 0:
+    if len(sorted_anime) == 0:
         return "User watched everything"
 
     # Return the top recommended anime
-    return recommended_anime[0]
+    return sorted_anime.index[0]
+
+
+
 
 def test(user_id):  
     
-    threshold = 10  # Example rating threshold for liked anime 
+    threshold = 3  # Example rating threshold for liked anime 
     # Retrieve liked animes
     watched_anime = user_item_matrix.loc[user_id]
     liked_anime = watched_anime[watched_anime >= threshold].index.tolist()
@@ -136,6 +130,6 @@ def test(user_id):
         return True, recommended_anime
 
     else:
-        return False, recommended_anime
+        return False, recommended_anime, liked_anime
 
-print(test(18))
+print(test(36))
