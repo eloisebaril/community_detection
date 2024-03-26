@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 import networkx as nx
-from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.metrics.pairwise import cosine_similarity, polynomial_kernel
 from scipy.sparse import csr_matrix
 import matplotlib.pyplot as plt
 from netgraph import Graph
@@ -43,7 +43,21 @@ user_item_matrix = first_100_users_data.pivot(index='user_id', columns='name', v
 user_item_sparse = csr_matrix(user_item_matrix.values)
 
 # Calculate user similarity (using cosine similarity = A.B/||A||*||B|| for two vectors
-user_similarity = cosine_similarity(user_item_sparse, dense_output=False)
+#user_similarity = cosine_similarity(user_item_sparse, dense_output=False)
+def similarity(user_item_sparse):
+    """Takes a sparse csr matrix of the ratings of each anime for each user,
+    -1 if not watched. Computes the similarity between each pair of users
+    by using cosine similarity on the ratings only."""
+
+    # Replace -1 entries with 0
+    user_item_sparse_zero = user_item_sparse.copy()
+    user_item_sparse_zero.data[user_item_sparse_zero.data == -1] = 0
+
+    # Compute cosine similarity between users
+    user_similarity = cosine_similarity(user_item_sparse_zero, dense_output=False)
+
+    return user_similarity
+user_similarity=similarity(user_item_sparse)
 
 # Build user graph
 G = nx.Graph()
@@ -88,18 +102,19 @@ if visu:
 def recommendation(user,  user_item_matrix, communities=communities):
     """Returns a recommended anime for a given user"""
     # Find the community to which the user belongs
+    user_community = []
     for community in communities:
         if user in community:
             user_community = list(community)
             break
-
+    
     # Filter user-item matrix for users in the given community
     community_user_item_matrix = user_item_matrix[user_item_matrix.index.isin(user_community)]
 
     
     # Calculate mean rating for each anime within the community
     #community_ratings = community_user_item_matrix.mean(axis=0)
-    community_ratings = community_user_item_matrix.replace(-1, np.nan).mean(axis=0)
+    community_ratings = community_user_item_matrix.replace(-1, 0).mean(axis=0)
     # Sort the anime by average ratings
     sorted_anime = community_ratings.sort_values(ascending=False)
 
@@ -114,7 +129,7 @@ def recommendation(user,  user_item_matrix, communities=communities):
 
 def test(user_id):  
     
-    threshold = 3  # Example rating threshold for liked anime 
+    threshold = 7  # Example rating threshold for liked anime 
     # Retrieve liked animes
     watched_anime = user_item_matrix.loc[user_id]
     liked_anime = watched_anime[watched_anime >= threshold].index.tolist()
@@ -130,6 +145,7 @@ def test(user_id):
         return True, recommended_anime
 
     else:
-        return False, recommended_anime, liked_anime
+        return False, recommended_anime
 
-print(test(36))
+for i in range(1, 300):
+    print(i, test(i))
