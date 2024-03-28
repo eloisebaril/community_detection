@@ -51,13 +51,12 @@ def similarity(user_item_sparse, method):
 
     # Replace -1 entries with 0
     user_item_sparse_zero = user_item_sparse.copy()
-    user_item_sparse_zero.data[user_item_sparse_zero.data == -1] = 0
+    #user_item_sparse_zero.data[user_item_sparse_zero.data == -1] = 0
 
     # Compute cosine similarity between users
     user_similarity = method(user_item_sparse_zero)
-
     return user_similarity
-user_similarity=similarity(user_item_sparse, polynomial_kernel)
+user_similarity=similarity(user_item_sparse, rbf_kernel)
 
 # Build user graph
 G = nx.Graph()
@@ -65,12 +64,12 @@ num_users = user_item_matrix.shape[0]
 for i in range(num_users):
     for j in range(i + 1, num_users):
         similarity = user_similarity[i, j]
-        if similarity > 0:  # Only add edges for users with positive similarity
+        if similarity > 0.1:  # Only add edges for users with significant similarity
             G.add_edge(i, j, weight=similarity)
 
 # Perform community detection
 #communities = nx.algorithms.community.greedy_modularity_communities(G) #greedy way
-communities = nx.community.louvain_communities(G, resolution=1.2)#louvain algorithm 
+communities = nx.community.louvain_communities(G, resolution=1.01)#louvain algorithm 
 
 # Print number of communities and their sizes
 print("Number of communities:", len(communities))
@@ -110,23 +109,22 @@ def recommendation(user,  user_item_matrix, communities=communities, treshold=7)
     
     # Filter user-item matrix for users in the given community
     community_user_item_matrix = user_item_matrix[user_item_matrix.index.isin(user_community)]
-
-    other_user_item_matrix = user_item_matrix[~user_item_matrix.index.isin(user_community)]
+    #smoothen the rating distribution
+    C = community_user_item_matrix
+    community_user_item_matrix = C[abs(C - np.mean(C, axis=0)) <  2*np.std(C, axis=0)]
     # Calculate mean rating for each anime within the community
-    #community_ratings = community_user_item_matrix.mean(axis=0)
-    community_ratings = community_user_item_matrix.mean(axis=0)*(len(community_user_item_matrix[community_user_item_matrix > treshold]))/(len(community_user_item_matrix))*(300 - len(community_user_item_matrix))/len(other_user_item_matrix)
+    community_ratings = community_user_item_matrix.mean(axis=0)
     
     # Get the animes that the user has seen (rated)
-    user_seen_anime = user_item_matrix.loc[user][user_item_matrix.loc[user] != -1].index
+    #user_seen_anime = user_item_matrix.loc[user][user_item_matrix.loc[user] != -1].index
     # Sort the anime by average ratings
-    sorted_anime = community_ratings[~community_ratings.index.isin(user_seen_anime)].sort_values(ascending=False)
-
+    #sorted_anime = community_ratings[~community_ratings.index.isin(user_seen_anime)].sort_values(ascending=False)
+    sorted_anime = community_ratings.sort_values(ascending=False)
     if len(sorted_anime) == 0:
         return "User watched everything"
 
     # Return the top recommended animes
     return sorted_anime.index[[0, 2, 3, 1]]
-
 
 
 
@@ -138,21 +136,26 @@ def test(user_id):
     liked_anime = watched_anime[watched_anime >= threshold].index.tolist()
     #print(liked_anime)
     # Step 3: Remove the selected animes from the watched animes
-    if len(liked_anime):
+    if len(liked_anime)!=0:
         user_item_matrix.loc[user_id, liked_anime] = -1
 
-    # Step 4: Generate recommendations for the user
-    recommended_anime = recommendation(user_id, user_item_matrix=user_item_matrix)
-    
-    # Step 5: Evaluate the recommendations against the anime the user has watched and liked
-    if recommended_anime.any() in liked_anime:
-        return True, recommended_anime
+        # Step 4: Generate recommendations for the user
+        recommended_anime = recommendation(user_id, user_item_matrix=user_item_matrix)
+        recommended_seen = []
+        for anime in recommended_anime:
+            if anime in watched_anime:
+                recommended_seen.append(anime)
+        # Step 5: Evaluate the recommendations against the anime the user has watched and liked
 
-    else:
-        return False, recommended_anime
+        if recommended_seen[0] in liked_anime:
+            return True, recommended_seen
+
+        else:
+            return False, recommended_seen
+    return False, []
 s=0
 for i in range(300, 600):
-    t = test(i)
-    print(i, t)
-    s+=t[0]
-print(s)
+    print(i, recommendation(i, user_item_matrix))
+    
+
+
