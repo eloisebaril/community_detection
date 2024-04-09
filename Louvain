@@ -8,29 +8,6 @@ from netgraph import Graph
 # Load datasets
 anime_data = pd.read_csv('Anime.csv')
 rating_data = pd.read_csv('Rating.csv')
-community_to_color= [
-    "#FF0000",  # Red
-    "#00FF00",  # Green
-    "#0000FF",  # Blue
-    "#FFFF00",  # Yellow
-    "#00FFFF",  # Cyan
-    "#FF00FF",  # Magenta
-    "#FFA500",  # Orange
-    "#800080",  # Purple
-    "#00FF00",  # Lime
-    "#008080",  # Teal
-    "#FFC0CB",  # Pink
-    "#C0C0C0",  # Silver
-    "#A52A2A",  # Brown
-    "#800000",  # Maroon
-    "#808000",  # Olive
-    "#000080",  # Navy
-    "#4B0082",  # Indigo
-    "#7FFFD4",  # Aquamarine
-    "#40E0D0",  # Turquoise
-    "#FFD700"   # Gold
-]
-
 
 # Merge datasets on 'anime_id'
 merged_data = pd.merge(rating_data, anime_data, on='anime_id')
@@ -74,27 +51,6 @@ communities = nx.community.louvain_communities(G, resolution=1.01)#louvain algor
 print("Number of communities:", len(communities))
 for i, community in enumerate(communities):
     print("Community", i+1, "size:", len(community))
-
-# Optional: Visualization of the graph and communities doesn't work yet)
-visu=False
-if visu:
-    node_to_community = []
-    for i in G.nodes():
-        for idx, s in enumerate(communities):
-            if i in s:
-                node_to_community.append((i, idx))
-
-
-
-    node_color = {node: community_to_color[community_id] for node, community_id in node_to_community}
-
-    Graph(G,
-      node_color=node_color, node_edge_width=0, edge_alpha=0.1,
-      node_layout='communities', node_layout_kwargs=dict(node_to_community=node_to_community),
-      edge_layout='bundled', edge_layout_kwargs=dict(k=2000),
-    )
-
-    plt.show()
 
 
 def recommendation(user,  user_item_matrix, communities=communities, treshold=7):
